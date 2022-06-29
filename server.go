@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -120,12 +121,16 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 		return TxfrCompleteOk, nil
 	case cmd == "RETR":
 		// 读取文件
+
+		return CmdOk, nil
 	case cmd == "FEAT":
 		return FeatResponse, nil
 	case cmd == "NLST" || cmd == "LIST":
 		// 显示该目录下的所有文件夹以及文件
+		showLs(c, ch, user.username)
 		return CmdOk, nil
 	case cmd == "HELP":
+		// 显示服务端help
 		return CmdOk, nil
 	case cmd == "XPWD":
 		sendMsg(c, PwdResponse)
@@ -135,9 +140,11 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	case cmd == "TYPE" && args == "I":
 		return TypeSetOk, nil
 	case cmd == "PORT":
+		// 解析绑定ip端口
 		ch.DataConnectionAddr = parsePortArgs(args)
 		return PortOk, nil
 	case cmd == "PASV":
+		// TODO
 		return CmdNotImplementd, nil
 	case cmd == "QUIT":
 		return GoodbyeMsg, nil
@@ -167,6 +174,23 @@ func showListInfoName(ch *ConnectionConfig, username string) ([]fs.FileInfo, []s
 		res = append(res, fi[i].Name())
 	}
 	return fi, res, nil
+}
+
+func showLs(c net.Conn, ch *ConnectionConfig, username string) {
+	fis, err := showListInfo(ch, username)
+	if err != nil {
+		fmt.Printf("ls error %s", err)
+		return
+	}
+	// TODO: 优化
+	for _, v := range fis {
+		sendMsg(c, fmt.Sprintf("%s", formatFileInfo(v)))
+	}
+}
+
+func formatFileInfo(info fs.FileInfo) string {
+	res := "filename: " + info.Name() + "; isDir: " + strconv.FormatBool(info.IsDir()) + "; size: " + strconv.FormatFloat(float64(info.Size()), 'E', -1, 32) + "; modyTime: " + info.ModTime().String() + "\r"
+	return res
 }
 
 func showListInfo(ch *ConnectionConfig, username string) ([]fs.FileInfo, error) {
