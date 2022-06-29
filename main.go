@@ -41,6 +41,6 @@ func main() {
 		}
 		log.Printf("connection from %v established.\n", c.RemoteAddr())
 		// 处理连接
-		HandleConnection(c)
+		go HandleConnection(c)
 	}
 }
