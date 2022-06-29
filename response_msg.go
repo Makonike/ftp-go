@@ -15,7 +15,7 @@ const (
 	UsrLoggedInProceed         = "230 User Logged In Proceed\r\n"                                                     // 进入登录过程
 	UsrNameOkNeedPass          = "331 Username OK Need Pass\r\n"                                                      // 要求输入密码
 	SyntaxErr                  = "500 Syntax Error\r\n"                                                               // 无效命令
-	CmdNotImplementd           = "502 Command not implemented\r\n"                                                    // 命令没有被执行
+	CmdNotImplementd           = "502 Command not implemented\r\n"                                                    // 命令没有被执行/实现
 	NotLoggedIn                = "530 Not Logged In\r\n"                                                              // 登录失败
 	AuthFailure                = "530 Auth Failure\r\n"                                                               // 认证错误
 	AuthFailureTryAgain        = "530 Please login with USER and PASS."                                               // 请以账号和密码登录

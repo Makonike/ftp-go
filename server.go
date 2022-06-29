@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	DataUrl    = "https://data.ambition.io"
 	storageDir = "uploads"
 )
 
@@ -32,6 +33,17 @@ func HandleConnection(c net.Conn) {
 
 	sendMsg(c, FtpServerReady)
 	user := AuthUser{}
+	msg := getMsg(c)
+	cmd, args, err := parseCommand(msg)
+	if err != nil {
+		sendMsg(c, SyntaxErr)
+	}
+	if cmd == "OPTS" {
+		if args == "UTF8 ON" {
+			// ok
+			sendMsg(c, CmdOk)
+		}
+	}
 
 	for {
 		msg := getMsg(c)
@@ -71,7 +83,6 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 		"RNFR",
 		"RNTO",
 		"SITE",
-		"SIZE",
 		"STAT",
 	}
 
@@ -88,14 +99,24 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 		return CmdOk, nil
 	case cmd == "SYST":
 		return SysType, nil
+	case cmd == "XMKD":
+		makeDir(ch, user.username, args)
+		return CmdOk, nil
 	case cmd == "STOR":
 		ch.Filename = stripDirectory(args)
 		readPortData(ch, user.username, c)
 		return TxfrCompleteOk, nil
 	case cmd == "FEAT":
 		return FeatResponse, nil
-	case cmd == "PWD":
-		return PwdResponse, nil
+	case cmd == "NLST" || cmd == "LIST":
+		return CmdOk, nil
+	case cmd == "HELP":
+		return CmdOk, nil
+	case cmd == "XPWD":
+		sendMsg(c, PwdResponse)
+		// 显示当前目录路径
+
+		return CmdOk, nil
 	case cmd == "TYPE" && args == "I":
 		return TypeSetOk, nil
 	case cmd == "PORT":
@@ -106,7 +127,20 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	case cmd == "QUIT":
 		return GoodbyeMsg, nil
 	}
-	return "", nil
+	return SyntaxErr, nil
+}
+
+func makeDir(ch *ConnectionConfig, username string, arg string) {
+	fmt.Printf("connecting to %v\n", ch.DataConnectionAddr)
+	var err error
+
+	err = os.MkdirAll(path.Join(storageDir, username, arg), 0777)
+	if err != nil {
+		if err != nil {
+			fmt.Printf("create dir error %s\n", err)
+			return
+		}
+	}
 }
 
 func readPortData(ch *ConnectionConfig, username string, out net.Conn) {
@@ -180,7 +214,8 @@ func getFileName(username, filename string) string {
 func getMsg(c net.Conn) string {
 	bufc := bufio.NewReader(c)
 	for {
-		l, err := bufc.ReadString('\n')
+		l, err := bufc.ReadBytes('\n')
+		ls := string(l)
 		if err != nil {
 			fmt.Printf("get msg from %v error %s\n", c.RemoteAddr(), err)
 			err := c.Close()
@@ -190,8 +225,8 @@ func getMsg(c net.Conn) string {
 			}
 			break
 		}
-		fmt.Printf("received: %s", l)
-		return strings.TrimRight(l, "\r")
+		fmt.Printf("received: %s\n", ls)
+		return strings.TrimRight(ls, "\r")
 	}
 	return ""
 }

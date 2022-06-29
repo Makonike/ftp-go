@@ -20,6 +20,12 @@ func stringInList(search string, data []string) bool {
 // parses a port arg and return an ip and port
 // ex: 10,0,0,1,192,127 return 10.0.0.0:49279
 func parsePortArgs(arg string) string {
+	defer func() {
+		err := recover()
+		if err != nil {
+			fmt.Printf("parse port args error\n")
+		}
+	}()
 	parts := strings.Split(arg, ",")
 	ip := strings.Join(parts[:4], ".")
 	p1, _ := strconv.Atoi(parts[4])
