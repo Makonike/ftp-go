@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/fs"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -21,6 +23,7 @@ const (
 type ConnectionConfig struct {
 	DataConnectionAddr string // 远程连接地址
 	Filename           string // 文件名
+	NowPath            string // 当前工作目录/路径
 }
 
 func HandleConnection(c net.Conn) {
@@ -56,6 +59,7 @@ func HandleConnection(c net.Conn) {
 	}
 
 	config := ConnectionConfig{}
+	config.NowPath = "/"
 	for {
 		cmd := getMsg(c)
 		resp, err := handleCommand(cmd, &config, &user, c)
@@ -102,20 +106,31 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	case cmd == "XMKD":
 		makeDir(ch, user.username, args)
 		return CmdOk, nil
+	case cmd == "CWD":
+		// 进入某个目录
+		b := solveCwd(ch, args, user.username)
+		if b {
+			return CmdOk, nil
+		}
+		return SyntaxErr, nil
 	case cmd == "STOR":
+		// 存储文件
 		ch.Filename = stripDirectory(args)
 		readPortData(ch, user.username, c)
 		return TxfrCompleteOk, nil
+	case cmd == "RETR":
+		// 读取文件
 	case cmd == "FEAT":
 		return FeatResponse, nil
 	case cmd == "NLST" || cmd == "LIST":
+		// 显示该目录下的所有文件夹以及文件
 		return CmdOk, nil
 	case cmd == "HELP":
 		return CmdOk, nil
 	case cmd == "XPWD":
 		sendMsg(c, PwdResponse)
 		// 显示当前目录路径
-
+		showPwd(ch, c)
 		return CmdOk, nil
 	case cmd == "TYPE" && args == "I":
 		return TypeSetOk, nil
@@ -130,11 +145,87 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	return SyntaxErr, nil
 }
 
+func showListName(ch *ConnectionConfig, username string) ([]string, error) {
+	fi, err := showListInfo(ch, username)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]string, len(fi))
+	for i := range fi {
+		res = append(res, fi[i].Name())
+	}
+	return res, nil
+}
+
+func showListInfoName(ch *ConnectionConfig, username string) ([]fs.FileInfo, []string, error) {
+	fi, err := showListInfo(ch, username)
+	if err != nil {
+		return nil, nil, err
+	}
+	res := make([]string, len(fi))
+	for i := range fi {
+		res = append(res, fi[i].Name())
+	}
+	return fi, res, nil
+}
+
+func showListInfo(ch *ConnectionConfig, username string) ([]fs.FileInfo, error) {
+	pwd, _ := os.Getwd()
+	//获取文件或目录相关信息
+	path2 := path.Join(pwd, storageDir, username, ch.NowPath)
+	path2 = strings.Replace(path2, "/", "\\", -1)
+	fileInfoList, err := ioutil.ReadDir(path2)
+	if err != nil {
+		return nil, err
+	}
+	return fileInfoList, nil
+}
+
+func solveCwd(ch *ConnectionConfig, args string, username string) bool {
+	// 返回上级目录
+	if args == ".." {
+		if ch.NowPath == "/" {
+			return false
+		}
+		p := path.Base(ch.NowPath)
+		if p == "/" || p == "." {
+			return false
+		}
+		ch.NowPath = strings.TrimRight(ch.NowPath, "/"+p)
+		if ch.NowPath == "" {
+			ch.NowPath = "/"
+		}
+		return true
+	}
+	fi, err := showListInfo(ch, username)
+	if err != nil {
+		fmt.Printf("solve cmd error %s", err)
+	}
+	b := false
+	for i := 0; i < len(fi); i++ {
+		if fi[i].Name() == args && fi[i].IsDir() {
+			b = true
+			break
+		}
+	}
+	if b {
+		ch.NowPath = path.Join(ch.NowPath, args)
+		return true
+	}
+	return false
+}
+
+func showPwd(ch *ConnectionConfig, c net.Conn) {
+	// 截取至xxx目录
+	sendMsg(c, path.Join(ch.NowPath, "\n"))
+}
+
 func makeDir(ch *ConnectionConfig, username string, arg string) {
 	fmt.Printf("connecting to %v\n", ch.DataConnectionAddr)
 	var err error
-
-	err = os.MkdirAll(path.Join(storageDir, username, arg), 0777)
+	path2 := path.Join(storageDir, username, ch.NowPath, arg)
+	path2 = strings.Replace(path2, "/", "\\", -1)
+	err = os.MkdirAll(path2, 0777)
 	if err != nil {
 		if err != nil {
 			fmt.Printf("create dir error %s\n", err)
@@ -167,14 +258,15 @@ func readPortData(ch *ConnectionConfig, username string, out net.Conn) {
 	}(c)
 
 	sendMsg(out, DataCnxAlreadyOpenStartXfr)
-
-	err = os.MkdirAll(path.Join(storageDir, username), 0777)
+	path2 := path.Join(storageDir, username, ch.NowPath)
+	path2 = strings.Replace(path2, "/", "\\", -1)
+	err = os.MkdirAll(path2, 0777)
 	if err != nil {
 		fmt.Printf("create dir error %s\n", err)
 		return
 	}
 
-	outPutName := getFileName(username, ch.Filename)
+	outPutName := getFileName(username, ch.Filename, ch)
 	file, err := os.Create(outPutName)
 	defer func(file *os.File) {
 		err = file.Close()
@@ -207,8 +299,10 @@ func readPortData(ch *ConnectionConfig, username string, out net.Conn) {
 	}
 }
 
-func getFileName(username, filename string) string {
-	return path.Join(storageDir, username, filename)
+func getFileName(username, filename string, ch *ConnectionConfig) string {
+	path2 := path.Join(storageDir, username, ch.NowPath, filename)
+	path2 = strings.Replace(path2, "/", "\\", -1)
+	return path2
 }
 
 func getMsg(c net.Conn) string {
