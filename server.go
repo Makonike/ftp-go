@@ -249,7 +249,7 @@ func showLs(c net.Conn, ch *ConnectionConfig, username string) {
 }
 
 func formatFileInfo(info fs.FileInfo) string {
-	res := "filename: " + info.Name() + "; isDir: " + strconv.FormatBool(info.IsDir()) + "; size: " + strconv.FormatFloat(float64(info.Size()), 'E', -1, 32) + "; modyTime: " + info.ModTime().String() + "\r"
+	res := "filename: " + info.Name() + "; isDir: " + strconv.FormatBool(info.IsDir()) + "; size: " + strconv.FormatFloat(float64(info.Size()), 'E', -1, 32) + "; modyTime: " + info.ModTime().String() + "\t"
 	return res
 }
 
@@ -307,7 +307,11 @@ func showPwd(ch *ConnectionConfig, c net.Conn) {
 func makeDir(ch *ConnectionConfig, username string, arg string) {
 	fmt.Printf("connecting to %v\n", ch.DataConnectionAddr)
 	var err error
-	path2 := path.Join(storageDir, username, ch.NowPath, arg)
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("get pwd for err error %s", err)
+	}
+	path2 := path.Join(pwd, storageDir, username, ch.NowPath, arg)
 	path2 = strings.Replace(path2, "/", "\\", -1)
 	err = os.MkdirAll(path2, 0777)
 	if err != nil {

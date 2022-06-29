@@ -8,7 +8,7 @@ const (
 	FeatResponse               = "211-Features:\r\n  FEAT\r\n  MDTM\r\n  PASV\r\n  SIZE\r\n  TYPE A;I\r\n211 End\r\n" // 系统状态回复
 	SysType                    = "215 UNIX Type: L8\r\n"                                                              // 系统类型回复
 	FtpServerReady             = "220 FTP Server Ready\r\n"                                                           // 服务就绪
-	GoodbyeMsg                 = "221 Goodbye!"                                                                       // 退出FTP
+	GoodbyeMsg                 = "221 Goodbye!\n"                                                                     // 退出FTP
 	TxfrCompleteOk             = "226 Data transfer complete\r\n"                                                     // 结束数据连接，数据传输完成
 	EnteringPasvMode           = "227 Entering Passive Mode (%s)\r\n"                                                 // 进入被动模式
 	PwdResponse                = "257 \"/\"\r\n"                                                                      // 路径名建立
@@ -18,6 +18,6 @@ const (
 	CmdNotImplementd           = "502 Command not implemented\r\n"                                                    // 命令没有被执行/实现
 	NotLoggedIn                = "530 Not Logged In\r\n"                                                              // 登录失败
 	AuthFailure                = "530 Auth Failure\r\n"                                                               // 认证错误
-	AuthFailureTryAgain        = "530 Please login with USER and PASS."                                               // 请以账号和密码登录
+	AuthFailureTryAgain        = "530 Please login with USER and PASS.\r\n"                                           // 请以账号和密码登录
 	AnonUserDenied             = "550 Anon User Denied\r\n"                                                           // 没有权限或者是文件不存在
 )
