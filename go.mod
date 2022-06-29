@@ -3,7 +3,6 @@ module lab-ftp
 go 1.18
 
 require (
-	github.com/cloudwego/hertz v0.1.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/spf13/viper v1.12.0
 	xorm.io/xorm v1.3.1

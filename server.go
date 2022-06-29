@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	DataUrl    = "https://data.ambition.io"
 	storageDir = "uploads"
 )
 
