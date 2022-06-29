@@ -83,11 +83,15 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	}
 
 	ignoredCommand := []string{
-		"CDUP",
+		// rm
 		"RMD",
+		// rm -rf
 		"RNFR",
+		// rename to, maybe use mv
 		"RNTO",
+		// locate
 		"SITE",
+		// show file info
 		"STAT",
 	}
 
