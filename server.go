@@ -125,7 +125,7 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 		return TxfrCompleteOk, nil
 	case cmd == "RETR":
 		// 读取文件
-
+		readData(ch, user.username, c, args)
 		return CmdOk, nil
 	case cmd == "FEAT":
 		return FeatResponse, nil
@@ -154,6 +154,62 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 		return GoodbyeMsg, nil
 	}
 	return SyntaxErr, nil
+}
+
+func readData(ch *ConnectionConfig, username string, in net.Conn, args string) {
+	fmt.Printf("connecting to %v\n", ch.DataConnectionAddr)
+	var err error
+
+	c, err := net.Dial("tcp", ch.DataConnectionAddr)
+	if err != nil {
+		fmt.Printf("dial connect failed %s\n", err)
+		return
+	}
+
+	err = c.SetReadDeadline(time.Now().Add(time.Minute))
+	if err != nil {
+		fmt.Printf("setDeadLine error %s\n", err)
+		return
+	}
+
+	defer func(c net.Conn) {
+		err = c.Close()
+		if err != nil {
+			fmt.Printf("connection %v close error %s\n", c.RemoteAddr(), err)
+		}
+	}(c)
+
+	sendMsg(in, DataCnxAlreadyOpenStartXfr)
+	pwd, _ := os.Getwd()
+	path2 := path.Join(pwd, storageDir, username, ch.NowPath, args)
+	path2 = strings.Replace(path2, "/", "\\", -1)
+	fi, err := os.OpenFile(path2, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0777)
+	defer func(fi *os.File) {
+		err := fi.Close()
+		if err != nil {
+			fmt.Printf("file close error %s", err)
+			return
+		}
+	}(fi)
+	if err != nil {
+		fmt.Printf("read file error %s", err)
+		return
+	}
+	buf := make([]byte, 1024)
+	for {
+		n, err := fi.Read(buf)
+		if err != nil && err != io.EOF {
+			fmt.Printf("read error %s", err)
+			break
+		}
+		if n == 0 {
+			break
+		}
+		if _, err := c.Write(buf[:n]); err != nil {
+			fmt.Printf("write error %s", err)
+			break
+		}
+	}
 }
 
 func showListName(ch *ConnectionConfig, username string) ([]string, error) {
