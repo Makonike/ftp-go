@@ -38,7 +38,7 @@ func HandleConnection(c net.Conn) {
 	sendMsg(c, FtpServerReady)
 	user := AuthUser{}
 	msg := getMsg(c)
-	cmd, args, err := parseCommand(msg)
+	cmd, args, err := ParseCommand(msg)
 	if err != nil {
 		sendMsg(c, SyntaxErr)
 	}
@@ -76,7 +76,7 @@ func HandleConnection(c net.Conn) {
 // 解析命令
 func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) (string, error) {
 	in = strings.TrimSpace(in)
-	cmd, args, err := parseCommand(in)
+	cmd, args, err := ParseCommand(in)
 	if err != nil {
 		fmt.Printf("%s from %v: %s\n", SyntaxErr, c.RemoteAddr(), err)
 		return SyntaxErr, err
@@ -109,11 +109,11 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	case cmd == "SYST":
 		return SysType, nil
 	case cmd == "XMKD":
-		makeDir(ch, user.username, args)
+		makeDir(ch, user.Username, args)
 		return CmdOk, nil
 	case cmd == "CWD":
 		// 进入某个目录
-		b := solveCwd(ch, args, user.username)
+		b := solveCwd(ch, args, user.Username)
 		if b {
 			return CmdOk, nil
 		}
@@ -121,17 +121,17 @@ func handleCommand(in string, ch *ConnectionConfig, user *AuthUser, c net.Conn) 
 	case cmd == "STOR":
 		// 存储文件
 		ch.Filename = stripDirectory(args)
-		readPortData(ch, user.username, c)
+		readPortData(ch, user.Username, c)
 		return TxfrCompleteOk, nil
 	case cmd == "RETR":
 		// 读取文件
-		readData(ch, user.username, c, args)
+		readData(ch, user.Username, c, args)
 		return CmdOk, nil
 	case cmd == "FEAT":
 		return FeatResponse, nil
 	case cmd == "NLST" || cmd == "LIST":
 		// 显示该目录下的所有文件夹以及文件
-		showLs(c, ch, user.username)
+		showLs(c, ch, user.Username)
 		return CmdOk, nil
 	case cmd == "HELP":
 		// 显示服务端help

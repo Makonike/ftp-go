@@ -1,0 +1,7 @@
+database:
+  driverName: mysql
+  dataSourceName: root:123456@tcp(localhost:3306)/
+  dbName: ftp_go
+
+server:
+  port: 2121

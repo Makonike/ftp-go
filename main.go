@@ -3,14 +3,31 @@ package main
 import (
 	"log"
 	"net"
+	"strconv"
 )
 
 const (
-	port = ":2121"
+	DefaultPort = 2121
 )
 
+var (
+	port = ":"
+)
+
+func init() {
+	err := SetupSetting()
+	InitAdapter()
+	if err != nil {
+		log.Fatalf("Init Server Error")
+	}
+}
+
 func main() {
+	if ServerSetting.port == 0 {
+		ServerSetting.port = DefaultPort
+	}
 	log.Printf("starting up ftp server")
+	port = port + strconv.FormatInt(int64(ServerSetting.port), 10)
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("listen tcp for port: %s error: %s\n", port, err)

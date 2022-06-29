@@ -39,7 +39,7 @@ func stripDirectory(remote string) string {
 	return filename
 }
 
-func parseCommand(in string) (string, string, error) {
+func ParseCommand(in string) (string, string, error) {
 	var command, args string
 
 	if len(in) < 3 {

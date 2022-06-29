@@ -1,15 +1,18 @@
 package main
 
+import "log"
+
 type AuthUser struct {
-	username string
-	password string
-	valid    bool // 是否合法
+	Id       int64
+	Username string `xorm:"varchar(255)"`
+	Password string `xorm:"varchar(255)"`
+	valid    bool   // 是否合法
 }
 
 // 用户登录验证身份
 func handleLogin(msg string, user *AuthUser) string {
 	// 解析命令，获取参数
-	cmd, args, err := parseCommand(msg)
+	cmd, args, err := ParseCommand(msg)
 	if err != nil {
 		return SyntaxErr
 	}
@@ -17,25 +20,36 @@ func handleLogin(msg string, user *AuthUser) string {
 	case cmd == "USER" && args == "":
 		return AnonUserDenied
 	case cmd == "USER" && args != "":
-		user.username = args
+		user.Username = args
 		return UsrNameOkNeedPass
 	case cmd == "PASS" && args == "":
 		return SyntaxErr
-	case cmd == "PASS" && args != "" && user.username != "":
-		user.password = args
+	case cmd == "PASS" && args != "" && user.Username != "":
+		user.Password = args
 	}
 
 	user.Authenticate()
 	if user.valid {
 		return UsrLoggedInProceed
 	} else {
-		user.username = ""
-		user.password = ""
+		user.Username = ""
+		user.Password = ""
 		return AuthFailureTryAgain
 	}
 }
 
 // Authenticate will auth the user set valid
 func (u *AuthUser) Authenticate() {
-	u.valid = true
+	var user AuthUser
+	// 验证
+	_, err := adapter.Engine.Table("auth_user").Where("username = ?", u.Username).Get(&user)
+	if err != nil {
+		log.Printf("get user error %s", err)
+		return
+	}
+	if u.Password == user.Password {
+		u.valid = true
+		return
+	}
+	u.valid = false
 }
